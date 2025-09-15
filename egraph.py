@@ -1,4 +1,4 @@
-# mini_egraph_fixed.py — minimal e-graph with deferred rebuild
+# egraph.py — minimal e-graph with deferred rebuild
 
 class UnionFind:
     def __init__(self):
