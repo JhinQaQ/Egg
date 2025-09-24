@@ -2,25 +2,6 @@
 
 A Python implementation of E-graphs (equality graphs) for term rewriting and program optimization, inspired by the [Egg](https://egraphs-good.github.io/) library.
 
-## What are E-graphs?
-
-E-graphs are a data structure that efficiently represents many equivalent expressions simultaneously. They're particularly useful for:
-
-- **Program optimization**: Finding equivalent but more efficient versions of expressions
-- **Theorem proving**: Discovering equalities between terms
-- **Compiler optimizations**: Applying algebraic rewrites (commutativity, associativity, distributivity)
-- **Symbolic computation**: Manipulating mathematical expressions
-
-## Features
-
-- **Union-Find data structure** for efficient equivalence class management
-- **Hash-consing** to avoid duplicate nodes
-- **Deferred rebuilding** for performance
-- **Pattern matching** with variables (e.g., `?x`, `?y`)
-- **Term rewriting** with customizable rules
-- **Extraction** of optimal terms based on size
-- **Comprehensive test suite**
-
 ## Project Structure
 
 - `mini_egg.py` - Full-featured implementation with rewriting, pattern matching, and extraction
@@ -113,15 +94,38 @@ print(f"Optimized: {best}")
 
 ## Running Tests
 
+### Run All Tests
 ```bash
 python mini_egg.py
 ```
 
-The test suite includes:
-- Basic E-graph operations
-- Commutativity and associativity tests
-- Distributivity proofs
-- Pattern matching verification
+### Run Specific Tests
+```bash
+# Run a specific test method
+python -m unittest mini_egg.TestMiniEgg.test_commutativity_add
+
+# Run with verbose output
+python -m unittest mini_egg.TestMiniEgg.test_commutativity_add -v
+
+# Run all tests with verbose output
+python -m unittest mini_egg -v
+```
+
+### Running Individual Test Categories
+
+```bash
+# Test only commutativity
+python -m unittest mini_egg.TestMiniEgg.test_commutativity_add mini_egg.TestMiniEgg.test_commutativity_mul
+
+# Test only associativity  
+python -m unittest mini_egg.TestMiniEgg.test_associativity_add mini_egg.TestMiniEgg.test_associativity_mul
+
+# Test only distributivity
+python -m unittest mini_egg.TestMiniEgg.test_distributivity_left mini_egg.TestMiniEgg.test_distributivity_right
+
+# Test pattern matching
+python -m unittest mini_egg.TestMiniEgg.test_pattern_matching
+```
 
 ## Implementation Details
 
@@ -138,13 +142,6 @@ The test suite includes:
 - **Terms**: Tuples like `("Add", ("Num", 1), ("Num", 2))`
 - **Pattern Variables**: Strings starting with `?` (e.g., `"?x"`)
 - **E-class IDs**: Integers representing equivalence classes
-
-## Notes
-
-- The implementation uses deferred rebuilding for better performance
-- Hash-consing prevents exponential blowup in many cases
-- Union-Find with path compression ensures near-constant time operations
-- Pattern matching is optimized for common cases
 
 ## Limitations
 

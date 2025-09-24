@@ -351,6 +351,7 @@ class Runner:
 # Tests
 class TestMiniEgg(unittest.TestCase):
     def test_build_and_extract_identity(self):
+        """Test that we can build an expression and extract it back."""
         eg = EGraph()
         expr = ("Mul", ("Add", ("Num", 1), ("Num", 2)),
                       ("Add", ("Num", 3), ("Add", ("Num", 4), ("Num", 5))))
@@ -363,6 +364,7 @@ class TestMiniEgg(unittest.TestCase):
         self.assertEqual(best[2][0], "Add")
 
     def test_commutativity_add(self):
+        """Test that addition is commutative: a + b = b + a."""
         eg = EGraph()
         a = eg.add_term(("Add", ("Num", 1), ("Num", 2)))
         b = eg.add_term(("Add", ("Num", 2), ("Num", 1)))
@@ -372,7 +374,65 @@ class TestMiniEgg(unittest.TestCase):
         # after, they should be equal
         self.assertEqual(eg.uf.find(a), eg.uf.find(b))
 
+    def test_commutativity_mul(self):
+        """Test that multiplication is commutative: a * b = b * a."""
+        eg = EGraph()
+        a = eg.add_term(("Mul", ("Num", 3), ("Num", 4)))
+        b = eg.add_term(("Mul", ("Num", 4), ("Num", 3)))
+        # before rewrites, they are different classes
+        self.assertNotEqual(eg.uf.find(a), eg.uf.find(b))
+        Runner(eg).run(2, rewrites=[COMM_MUL])
+        # after, they should be equal
+        self.assertEqual(eg.uf.find(a), eg.uf.find(b))
+
+    def test_associativity_add(self):
+        """Test that addition is associative: (a + b) + c = a + (b + c)."""
+        eg = EGraph()
+        left = eg.add_term(("Add", ("Add", ("Num", 1), ("Num", 2)), ("Num", 3)))
+        right = eg.add_term(("Add", ("Num", 1), ("Add", ("Num", 2), ("Num", 3))))
+        # before rewrites, they are different classes
+        self.assertNotEqual(eg.uf.find(left), eg.uf.find(right))
+        Runner(eg).run(3, rewrites=[ASSOC_ADD])
+        # after, they should be equal
+        self.assertEqual(eg.uf.find(left), eg.uf.find(right))
+
+    def test_associativity_mul(self):
+        """Test that multiplication is associative: (a * b) * c = a * (b * c)."""
+        eg = EGraph()
+        left = eg.add_term(("Mul", ("Mul", ("Num", 2), ("Num", 3)), ("Num", 4)))
+        right = eg.add_term(("Mul", ("Num", 2), ("Mul", ("Num", 3), ("Num", 4))))
+        # before rewrites, they are different classes
+        self.assertNotEqual(eg.uf.find(left), eg.uf.find(right))
+        Runner(eg).run(3, rewrites=[ASSOC_MUL])
+        # after, they should be equal
+        self.assertEqual(eg.uf.find(left), eg.uf.find(right))
+
+    def test_distributivity_left(self):
+        """Test left distributivity: a * (b + c) = (a * b) + (a * c)."""
+        eg = EGraph()
+        left = eg.add_term(("Mul", ("Num", 5), ("Add", ("Num", 2), ("Num", 3))))
+        right = eg.add_term(("Add", ("Mul", ("Num", 5), ("Num", 2)),
+                                   ("Mul", ("Num", 5), ("Num", 3))))
+        # before rewrites, they are different classes
+        self.assertNotEqual(eg.uf.find(left), eg.uf.find(right))
+        Runner(eg).run(3, rewrites=[DISTR_L])
+        # after, they should be equal
+        self.assertEqual(eg.uf.find(left), eg.uf.find(right))
+
+    def test_distributivity_right(self):
+        """Test right distributivity: (a + b) * c = (a * c) + (b * c)."""
+        eg = EGraph()
+        left = eg.add_term(("Mul", ("Add", ("Num", 1), ("Num", 2)), ("Num", 4)))
+        right = eg.add_term(("Add", ("Mul", ("Num", 1), ("Num", 4)),
+                                   ("Mul", ("Num", 2), ("Num", 4))))
+        # before rewrites, they are different classes
+        self.assertNotEqual(eg.uf.find(left), eg.uf.find(right))
+        Runner(eg).run(3, rewrites=[DISTR_R])
+        # after, they should be equal
+        self.assertEqual(eg.uf.find(left), eg.uf.find(right))
+
     def test_distributivity_creates_equal_form(self):
+        """Test that distributivity can prove complex equalities."""
         eg = EGraph()
         x = eg.add_term(("Mul", ("Num", 7), ("Add", ("Num", 2), ("Num", 3))))
         y = eg.add_term(("Add", ("Mul", ("Num", 7), ("Num", 2)),
@@ -382,11 +442,132 @@ class TestMiniEgg(unittest.TestCase):
         self.assertEqual(eg.uf.find(x), eg.uf.find(y))
 
     def test_assoc_then_comm(self):
+        """Test that associativity and commutativity work together."""
         eg = EGraph()
         t1 = eg.add_term(("Add", ("Num", 1), ("Add", ("Num", 2), ("Num", 3))))
         t2 = eg.add_term(("Add", ("Add", ("Num", 3), ("Num", 2)), ("Num", 1)))
         Runner(eg).run(5, rewrites=[ASSOC_ADD, COMM_ADD])
         self.assertEqual(eg.uf.find(t1), eg.uf.find(t2))
+
+    def test_complex_equality_proof(self):
+        """Test a complex equality that requires multiple rewrite rules."""
+        eg = EGraph()
+        # (a + b) * (c + d) should equal (a * c) + (a * d) + (b * c) + (b * d)
+        left = eg.add_term(("Mul", ("Add", ("Num", 1), ("Num", 2)),
+                                  ("Add", ("Num", 3), ("Num", 4))))
+        right = eg.add_term(("Add", ("Add", ("Mul", ("Num", 1), ("Num", 3)),
+                                          ("Mul", ("Num", 1), ("Num", 4))),
+                                  ("Add", ("Mul", ("Num", 2), ("Num", 3)),
+                                          ("Mul", ("Num", 2), ("Num", 4)))))
+        # Apply all rewrite rules
+        Runner(eg).run(10, rewrites=REWRITES)
+        self.assertEqual(eg.uf.find(left), eg.uf.find(right))
+
+    def test_pattern_matching(self):
+        """Test that pattern matching works correctly."""
+        eg = EGraph()
+        # Add some expressions
+        eg.add_term(("Add", ("Num", 1), ("Num", 2)))
+        eg.add_term(("Add", ("Num", 3), ("Num", 4)))
+        eg.add_term(("Mul", ("Num", 5), ("Num", 6)))
+        
+        # Find all additions
+        pattern = ("Add", "?x", "?y")
+        matches = eg.ematch(pattern)
+        self.assertEqual(len(matches), 2)  # Should find 2 additions
+        
+        # Check that we found the right patterns
+        found_ops = set()
+        for _, subst in matches:
+            x_class = subst['?x']
+            y_class = subst['?y']
+            # Extract the actual numbers
+            x_val = eg.extract(x_class)[1]  # ("Num", value)
+            y_val = eg.extract(y_class)[1]
+            found_ops.add((x_val, y_val))
+        
+        expected = {(1, 2), (3, 4)}
+        self.assertEqual(found_ops, expected)
+
+    def test_extraction_optimization(self):
+        """Test that extraction finds smaller representations."""
+        eg = EGraph()
+        # Start with a complex expression
+        expr = ("Add", ("Mul", ("Num", 0), ("Add", ("Num", 1), ("Num", 2))),
+                      ("Mul", ("Num", 1), ("Num", 0)))
+        root = eg.add_term(expr)
+        
+        # Apply rewrite rules
+        Runner(eg).run(5, rewrites=REWRITES)
+        
+        # Extract should find a simpler form
+        optimized = eg.extract(root)
+        # The result should be simpler (0 * anything = 0, so this should be 0)
+        self.assertEqual(optimized, ("Num", 0))
+
+    def test_union_find_operations(self):
+        """Test that union-find operations work correctly."""
+        eg = EGraph()
+        
+        # Add some terms
+        a = eg.add_term(("Num", 1))
+        b = eg.add_term(("Num", 2))
+        c = eg.add_term(("Num", 1))  # Same as a
+        
+        # Initially different
+        self.assertNotEqual(eg.uf.find(a), eg.uf.find(b))
+        self.assertNotEqual(eg.uf.find(a), eg.uf.find(c))
+        
+        # Merge a and c (they represent the same number)
+        eg.merge(a, c)
+        self.assertEqual(eg.uf.find(a), eg.uf.find(c))
+        self.assertNotEqual(eg.uf.find(a), eg.uf.find(b))
+
+    def test_rebuild_invariants(self):
+        """Test that rebuilding maintains e-graph invariants."""
+        eg = EGraph()
+        
+        # Add a complex expression
+        expr = ("Add", ("Add", ("Num", 1), ("Num", 2)), ("Num", 3))
+        root = eg.add_term(expr)
+        
+        # Apply some rewrites to trigger rebuilding
+        Runner(eg).run(3, rewrites=[COMM_ADD, ASSOC_ADD])
+        
+        # The e-graph should still be valid
+        # (This is more of a smoke test - the real test is that it doesn't crash)
+        optimized = eg.extract(root)
+        self.assertIsInstance(optimized, tuple)
+        self.assertGreater(len(optimized), 0)
+
+    def test_empty_egraph(self):
+        """Test operations on an empty e-graph."""
+        eg = EGraph()
+        
+        # Pattern matching on empty graph should return empty list
+        matches = eg.ematch(("Add", "?x", "?y"))
+        self.assertEqual(len(matches), 0)
+        
+        # Extract should handle non-existent class gracefully
+        with self.assertRaises(KeyError):
+            eg.extract(999)  # Non-existent class ID
+
+    def test_single_number(self):
+        """Test that single numbers work correctly."""
+        eg = EGraph()
+        
+        # Add a single number
+        num = eg.add_term(("Num", 42))
+        
+        # Extract should return the same number
+        extracted = eg.extract(num)
+        self.assertEqual(extracted, ("Num", 42))
+        
+        # Pattern matching should work
+        pattern = ("Num", "?x")
+        matches = eg.ematch(pattern)
+        self.assertEqual(len(matches), 1)
+        self.assertEqual(matches[0][1]['?x'], eg.uf.find(num))
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)
