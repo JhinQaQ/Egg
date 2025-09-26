@@ -92,39 +92,28 @@ print(f"Original: {expr}")
 print(f"Optimized: {best}")
 ```
 
-## Running Tests
+## Running Tests (pytest)
 
-### Run All Tests
+This project now uses `pytest` with tests located under `tests/`.
+
+### Install pytest
 ```bash
-python mini_egg.py
+pip install pytest
 ```
 
-### Run Specific Tests
+### Run all tests
 ```bash
-# Run a specific test method
-python -m unittest mini_egg.TestMiniEgg.test_commutativity_add
-
-# Run with verbose output
-python -m unittest mini_egg.TestMiniEgg.test_commutativity_add -v
-
-# Run all tests with verbose output
-python -m unittest mini_egg -v
+pytest -q
 ```
 
-### Running Individual Test Categories
-
+### Run with verbose output
 ```bash
-# Test only commutativity
-python -m unittest mini_egg.TestMiniEgg.test_commutativity_add mini_egg.TestMiniEgg.test_commutativity_mul
+pytest -vv
+```
 
-# Test only associativity  
-python -m unittest mini_egg.TestMiniEgg.test_associativity_add mini_egg.TestMiniEgg.test_associativity_mul
-
-# Test only distributivity
-python -m unittest mini_egg.TestMiniEgg.test_distributivity_left mini_egg.TestMiniEgg.test_distributivity_right
-
-# Test pattern matching
-python -m unittest mini_egg.TestMiniEgg.test_pattern_matching
+### Run a single test
+```bash
+pytest -q tests/test_mini_egg.py::TestMiniEgg::test_commutativity_add
 ```
 
 ## Implementation Details
